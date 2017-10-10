@@ -1,0 +1,250 @@
+<html>
+	<head>
+		<title>d3v4 and d3-annotation</title>
+		<script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/1.13.0/d3-annotation.min.js"></script>
+		<style>
+			body{font-family:metric;}
+			.background{fill:#fff1e0;}
+			.anno-capture{fill-opacity:0;}
+			text{font-family:metric;}
+			.title{font-size:1.4em;font-weight:500;}
+			.rect{fill:#bb6d82;}
+
+			:root {
+      			--annotation-color: #6b6e68;
+    		}
+    		.annotation path {
+		      stroke: var(--annotation-color);
+		      fill: none;
+		    }
+
+		    .annotation path.connector-arrow,
+		    .annotation path.connector-dot,
+		    .title text, .annotation text {
+		      fill: var(--annotation-color);
+		    }
+
+		    .annotation-note-bg {
+		      fill: rgba(0, 0, 0, 0);
+		    }
+
+		    .annotation-note-title, text.title {
+		      font-weight: bold;
+		    }
+
+		    text.title {
+		      font-size: 1.2em;
+		    }
+
+		    .annoHTML{background-color: #dedede;color:#aaaaaa;width:70%;}
+
+		      /*hide the handles*/
+		      circle.handle {
+		        stroke: none;
+		        cursor: move;
+		        fill-opacity: 0;
+		      }
+
+		      circle.handle.highlight {
+		        stroke-opacity: 1;
+		      }
+
+		</style>
+	</head>
+	<body>
+		<script>
+
+		const mytitle = "d3v4 and d3-annotation";
+		//basic chart layout
+		const h = 400;
+		const w = 600;
+		const margin = {left:20,right:20,top:40,bottom:20}
+
+		let option = "circle";
+    let annoTitle = "Look here!"
+   	let annoText = "Something important happened here - and these are the details..."
+
+		var annoNumber = 0;
+
+    //imaginary numbers
+		const mydata = [
+		{name:"SW",value:9},
+		{name:"SE",value:29},
+		{name:"NE",value:45},
+		{name:"NW",value:62},
+		{name:"MID",value:41},
+		{name:"EM",value:24},
+		{name:"E",value:41},
+		{name:"LONDON",value:24}
+		];
+
+		//work out data extents
+		// data values
+		var extent = d3.extent(mydata,function(d){
+			return d.value;
+		})
+
+		//data categories
+		var cats = mydata.map(function(d){
+			return d.name
+		})
+
+		//derive size of inner (graph) space
+		const innerW = w-(margin.left+margin.right);
+		const innerH = h-(margin.top+margin.bottom);
+
+		//define scales
+		let yScale = d3.scaleLinear()
+			.domain([0,extent[1]])
+			.range([innerH,0]);
+
+		let xScale = d3.scaleBand()
+			.domain(cats)
+			.range([0,innerW])
+			.padding(0.2)//adjust spacing between bars
+
+		//define axes
+		const xAxis = d3.axisBottom(xScale)
+			.tickSizeInner(0)
+			.tickSizeOuter(0)
+
+		const yAxis = d3.axisLeft(yScale)
+			.ticks(3)
+			.tickSizeOuter(0)
+			.tickSizeInner(-innerW);
+
+		//document structure
+		let svg = d3.select("body").append("svg")
+			.attr("width",w)
+			.attr("height",h)
+
+		svg.append("rect")
+			.attr("class","background")
+			.attr("width",innerW)
+			.attr("height",innerH)
+			.attr("x",margin.left)
+			.attr("y",margin.top)
+
+		svg.append("text")
+			.attr("class","title")
+			.attr("x",margin.left)
+			.attr("y",margin.top-10)
+			.text(mytitle)
+
+		//render axes
+		svg.append("g")
+			.attr("id","xAxis")
+			.attr("transform","translate("+margin.left+","+(h-margin.bottom)+")")
+			.call(xAxis);
+
+		svg.append("g")
+			.attr("id","yAxis")
+			.attr("transform","translate("+margin.left+","+margin.top+")")
+			.call(yAxis);
+
+		//draw bars
+		let bars = svg.append("g")
+			.attr("id","bars")
+			.attr("transform","translate("+margin.left+","+margin.top+")")
+			.selectAll("rect")
+			.data(mydata)
+			.enter()
+			.append("rect");
+
+		bars.attr("x",function(d,i){return xScale(d.name)})
+			.attr("width",xScale.bandwidth)
+			.attr("y",function(d,i){return yScale(d.value)})
+			.attr("height",function(d,i){
+				return innerH-(yScale(d.value))
+			})
+			.attr("class","rect")
+
+	//allow for user create annotations
+		//rect - invisible - to capture clicks, record x,y and fire anno creation
+		svg.append("rect")
+			.attr("class","anno-capture")
+			.attr("width",innerW)
+			.attr("height",innerH)
+			.attr("x",margin.left)
+			.attr("y",margin.top)
+			.on("click",function(){
+				var coordinates=[0,0];
+				coordinates=d3.mouse(this);
+				createAnno(coordinates)
+			})
+
+	d3.select("body").append("h3").text("Annotation type:")
+	const form = d3.select("body").append("form").on("change",function(){
+		option = d3.select('input[name="anno"]:checked').node().value;
+	});
+	form.append("input")
+		.attr("type","radio")
+		.attr("name","anno")
+		.attr("value","circle")
+		.attr("checked",true);
+	form.append("span").html("Circle")
+	form.append("input")
+		.attr("type","radio")
+		.attr("name","anno")
+		.attr("value","arrow");
+	form.append("span").html("Arrow")
+	form.append("input")
+		.attr("type","radio")
+		.attr("name","anno")
+		.attr("value","dot");
+	form.append("span").html("Dot")
+
+	function createAnno(coords){
+
+		var type;
+		var annoConnector;
+
+		if (option=="circle"){
+			type=d3.annotationCalloutCircle;
+		}
+
+		if (option=="arrow"||option=="dot"){
+			type=d3.annotationLabel;
+		}
+
+		if (option=="arrow"){
+			annoConnector="arrow"
+		}
+
+		if (option=="dot"){
+			annoConnector="dot"
+		}
+
+		const thisAnno = [{
+		note: {
+			label:annoText,
+			title:annoTitle,
+			wrap:150,
+			align:"middle",
+			},
+			connector:{
+				end:annoConnector
+			},
+			x:coords[0]-margin.left,
+			y:coords[1]-margin.top,
+			dx:30,
+			dy:-30
+
+		}];
+
+		const makeThis = d3.annotation()
+			.type(type)
+			.annotations(thisAnno)
+			.editMode(true)
+
+		svg.append("g")
+			.attr("transform","translate("+margin.left+","+margin.top+")")
+			.attr("class","annotation-group")
+			.call(makeThis)
+
+	}//end function
+
+		</script>
+	<body>
+</html>

@@ -1,0 +1,33 @@
+.test {
+
+  color: 'red';
+  font-size: 2em;
+
+}
+
+.error {
+            font-size: 3em;
+            color: red;
+        }
+
+.text{
+  font-family: helvetica;
+  color:#c87446;
+  display: inline-block;
+  width: 0%;
+  margin-left: 130px;
+
+}
+
+svg {
+       border: 1px solid #000000;
+   }
+
+rect {
+  stroke: orange;
+  stroke-width: 2;
+  fill: LightSteelBlue;
+}
+rect:hover {
+  fill: orange;
+}
